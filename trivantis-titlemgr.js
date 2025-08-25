@@ -427,8 +427,7 @@ TMPr.loadTest = function( fn, tn, pn )
     var httpReq = getHTTP( xfn, 'GET', null );
     if( httpReq.status != 200 && httpReq.status != 0 ) 
     {
-      console.warn('SCORM patch: no se pudo cargar archivo desde servidor (ignorado)');
-      return false;
+      trivAlert( 'LOADTESTERR', tn, 'You must run this content from a web-based server ' + httpReq.statusText );
       return;
     }
 	
@@ -460,8 +459,7 @@ TMPr.loadTest = function( fn, tn, pn )
         nl.async = "false"
         nl.load(xfn)
     } else {
-        console.warn('SCORM patch: no se pudo cargar archivo de test (ignorado)');
-      return false;
+        trivAlert('LOADTESTERR', tn, 'You must run this content from a web-based server');
         return;
     }
       
