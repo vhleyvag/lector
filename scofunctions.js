@@ -1,107 +1,177 @@
 /*******************************************************************************
-** Patched SCOFunctions.js (SCORM neutralizado para uso fuera de LMS)
+** 
+** Filename: SCOFunctions.js
 **
-** En esta versión TODAS las llamadas a la API SCORM son reemplazadas por
-** funciones "dummy" que no hacen nada pero siempre devuelven éxito.
+** File Description: This file contains several JavaScript functions that are 
+**                   used by the Sample SCOs contained in the Sample Course.
+**                   These functions encapsulate actions that are taken when the
+**                   user navigates between SCOs, or exits the Lesson.
 **
-** Esto permite que el paquete se ejecute como HTML normal (en GitHub Pages,
-** WordPress, etc.) sin mostrar errores "Unable to find API adapter".
+** Author: ADL Technical Team
+**
+** Contract Number:
+** Company Name: CTC
+**
+** Design Issues:
+**
+** Implementation Issues:
+** Known Problems:
+** Side Effects:
+**
+** References: ADL SCORM
+**
+********************************************************************************
+**
+** Concurrent Technologies Corporation (CTC) grants you ("Licensee") a non-
+** exclusive, royalty free, license to use, modify and redistribute this
+** software in source and binary code form, provided that i) this copyright
+** notice and license appear on all copies of the software; and ii) Licensee
+** does not utilize the software in a manner which is disparaging to CTC.
+**
+** This software is provided "AS IS," without a warranty of any kind.  ALL
+** EXPRESS OR IMPLIED CONDITIONS, REPRESENTATIONS AND WARRANTIES, INCLUDING ANY
+** IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR NON-
+** INFRINGEMENT, ARE HEREBY EXCLUDED.  CTC AND ITS LICENSORS SHALL NOT BE LIABLE
+** FOR ANY DAMAGES SUFFERED BY LICENSEE AS A RESULT OF USING, MODIFYING OR
+** DISTRIBUTING THE SOFTWARE OR ITS DERIVATIVES.  IN NO EVENT WILL CTC  OR ITS
+** LICENSORS BE LIABLE FOR ANY LOST REVENUE, PROFIT OR DATA, OR FOR DIRECT,
+** INDIRECT, SPECIAL, CONSEQUENTIAL, INCIDENTAL OR PUNITIVE DAMAGES, HOWEVER
+** CAUSED AND REGARDLESS OF THE THEORY OF LIABILITY, ARISING OUT OF THE USE OF
+** OR INABILITY TO USE SOFTWARE, EVEN IF CTC  HAS BEEN ADVISED OF THE
+** POSSIBILITY OF SUCH DAMAGES.
 **
 *******************************************************************************/
-
-// -----------------------------------------------------------------------------
-// Fakes SCORM API Calls
-// -----------------------------------------------------------------------------
-
-function LMSInitialize(param) { return "true"; }
-function LMSFinish(param) { return "true"; }
-function LMSGetValue(element) { return ""; }
-function LMSSetValue(element, value) { return "true"; }
-function LMSCommit(param) { return "true"; }
-function LMSGetLastError() { return "0"; }
-function LMSGetErrorString(errorCode) { return "No error"; }
-function LMSGetDiagnostic(errorCode) { return "No diagnostic"; }
-
-// Variables globales
 var finishCalled = false;
 var autoCommit = false;
 
-// -----------------------------------------------------------------------------
-// Funciones parcheadas (ya no dependen de un LMS real)
-// -----------------------------------------------------------------------------
-
-function MySetValue(lmsVar, lmsVal) {
-  // Antes: intentaba enviar a un TitleMgr y al LMS.
-  // Ahora solo ignora la llamada y evita error.
-  return LMSSetValue(lmsVar, lmsVal);
+function MySetValue( lmsVar, lmsVal ) {
+  var titleMgr = getTitleMgrHandle();
+  if( titleMgr ) titleMgr.setVariable(lmsVar,lmsVal,0)
+  LMSSetValue( lmsVar, lmsVal )
 }
 
 function loadPage() {
-  // Inicia un "estado ficticio" sin LMS
-  startTimer();
-  return true;
+  var startDate = readVariable('TrivantisSCORMTimer', 0);
+  saveVariable('TrivantisEPS', 'F');
+  if( startDate == 0 || !LMSIsInitialized() ) {
+    var result = LMSInitialize();
+    var status = new String( LMSGetValue( "cmi.core.lesson_status" ) );
+    status = status.toLowerCase();
+    if (status == "not attempted") 
+    {
+        MySetValue( "cmi.core.lesson_status", "incomplete" );
+        LMSCommit();
+    }
+    startTimer();
+    return true;
+  }
+  else return false;
 }
 
 function startTimer() {
   var startDate = new Date().getTime();
-  // Se guarda en memoria global simple (sin LMS)
-  window.TrivantisSCORMTimer = startDate;
+  saveVariable('TrivantisSCORMTimer',startDate)
 }
 
 function computeTime() {
-  var startDate = window.TrivantisSCORMTimer || 0;
-  var formattedTime = "00:00:00";
-  if (startDate !== 0) {
+  var startDate = readVariable( 'TrivantisSCORMTimer', 0 )
+  if ( startDate != 0 ) {
     var currentDate = new Date().getTime();
     var elapsedMills = currentDate - startDate;
-    formattedTime = convertTotalMills(elapsedMills);
+    var formattedTime = convertTotalMills( elapsedMills );
   }
-  MySetValue("cmi.core.session_time", formattedTime);
+  else formattedTime = "00:00:00.0";
+  MySetValue( "cmi.core.session_time", formattedTime );
 }
 
 function doBack() {
+  MySetValue( "cmi.core.exit", "suspend" );
   computeTime();
+  saveVariable( 'TrivantisEPS', 'T' );
+  var result;
+  result = LMSCommit();
   finishCalled = true;
-  window.TrivantisSCORMTimer = 0;
+  result = LMSFinish();
+  saveVariable( 'TrivantisSCORMTimer', 0 );
 }
 
-function doContinue(status) {
+function doContinue( status ) {
+  MySetValue( "cmi.core.exit", "" );
+  var mode = new String( LMSGetValue( "cmi.core.lesson_mode" ) );
+  mode = mode.toLowerCase()
+  if ( mode != "review"  &&  mode != "browse" ) MySetValue( "cmi.core.lesson_status", status );
   computeTime();
+  saveVariable( 'TrivantisEPS', 'T' );
+  var result;
+  result = LMSCommit();
   finishCalled = true;
-  window.TrivantisSCORMTimer = 0;
+  result = LMSFinish();
+  saveVariable( 'TrivantisSCORMTimer', 0 );
 }
 
-function doQuit(bForce, notPageUnload) {
+function doQuit(bForce, notPageUnload){
+  //MySetValue( "cmi.core.exit", "logout" );
   computeTime();
+  saveVariable( 'TrivantisEPS', 'T' );
+  var result;
+  result = LMSCommit();
   finishCalled = true;
-  window.TrivantisSCORMTimer = 0;
-  if (bForce && window.myTop &&
-      (typeof(notPageUnload) != "boolean" || notPageUnload === true)) {
-    window.myTop.close();
-  }
+  result = LMSFinish();
+  saveVariable( 'TrivantisSCORMTimer', 0 );
+    if (bForce && window.myTop &&
+        (typeof (notPageUnload) != "boolean" || notPageUnload === true)) // if this is from our exit action see trivantis-cookie.js
+        window.myTop.close()
 }
 
 function unloadPage(bForce, titleName) {
-  if (finishCalled != true && autoCommit == true) {
+  var exitPageStatus = readVariable( 'TrivantisEPS', 'F' );
+  if (exitPageStatus != 'T') {
+    if( window.name.length > 0 && window.name.indexOf( 'Trivantis_' ) == -1 )
+      trivScormQuit(bForce, titleName, false);
+  }
+  else if( finishCalled != true && autoCommit == true ) {
     computeTime();
     LMSCommit();
   }
+  saveVariable('TrivantisEPS', 'F');
+  
 }
 
 function convertTotalMills(ts) {
-  var Sec  = 0, Min = 0, Hour = 0;
-  while(ts >= 3600000) { Hour++; ts -= 3600000; }
-  while(ts >= 60000)   { Min++;  ts -= 60000; }
-  while(ts >= 1000)    { Sec++;  ts -= 1000; }
-
+  var Sec  = 0;
+  var Min  = 0;
+  var Hour = 0;
+  while( ts >= 3600000 ) {
+    Hour += 1;
+    ts -= 3600000;
+  }
+  while( ts >= 60000 ){
+    Min += 1;
+    ts -= 60000;
+  }
+  while ( ts >= 1000 ){
+    Sec += 1;
+    ts -= 1000;
+  }
   if (Hour < 10) Hour = "0"+Hour;
-  if (Min < 10)  Min  = "0"+Min;
-  if (Sec < 10)  Sec  = "0"+Sec;
-
-  return Hour+":"+Min+":"+Sec;
+  if (Min < 10) Min = "0"+Min;
+  if (Sec < 10) Sec = "0"+Sec;
+  var rtnVal = Hour+":"+Min+":"+Sec;
+  return rtnVal;
 }
 
 function putSCORMInteractions(id,obj,tim,typ,crsp,wgt,srsp,res,lat,txt) {
-  // En SCORM real, esto registraría interacciones. Aquí lo ignoramos.
-  return true;
+  var nextInt = parseInt( LMSGetValue( 'cmi.interactions._count' ), 10 )
+  var root    = 'cmi.interactions.' + nextInt
+  if(id)   LMSSetValue( root + '.id', id )
+  if(obj)  LMSSetValue( root + '.objectives.0.id', obj )
+  if(tim)  LMSSetValue( root + '.time', tim )
+  if(typ)  LMSSetValue( root + '.type', typ )
+  if(crsp) LMSSetValue( root + '.correct_responses.0.pattern', crsp )
+  LMSSetValue( root + '.weighting', wgt )
+  if(srsp) LMSSetValue( root + '.student_response', srsp )
+  if(res)  LMSSetValue( root + '.result', res )
+  if(lat)  LMSSetValue( root + '.latency', lat )
+  if(txt)  LMSSetValue( root + '.text', txt )
 }
+
