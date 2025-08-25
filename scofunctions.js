@@ -1,22 +1,56 @@
 /*******************************************************************************
-** Patched SCOFunctions.js (SCORM neutralizado para uso fuera de LMS)
+** Patched SCOFunctions.js
 **
-** En esta versión TODAS las llamadas a la API SCORM son reemplazadas por
-** funciones "dummy" que no hacen nada pero siempre devuelven éxito.
-**
-** Esto permite que el paquete se ejecute como HTML normal (en GitHub Pages,
-** WordPress, etc.) sin mostrar errores "Unable to find API adapter".
-**
+** Versión simplificada para uso fuera de LMS:
+** - No guarda progreso ni estado.
+** - Sí permite manejar calificación (score) y devolverla al curso.
 *******************************************************************************/
 
+// Variables globales para manejar calificación
+var scoreRaw = "";
+var scoreMax = "";
+var scoreMin = "";
+
 // -----------------------------------------------------------------------------
-// Fakes SCORM API Calls
+// Fakes SCORM API Calls con soporte de calificación
 // -----------------------------------------------------------------------------
 
 function LMSInitialize(param) { return "true"; }
 function LMSFinish(param) { return "true"; }
-function LMSGetValue(element) { return ""; }
-function LMSSetValue(element, value) { return "true"; }
+
+function LMSGetValue(element) {
+  // Manejo de score
+  if (element === "cmi.core.score.raw" || element === "cmi.score.raw") {
+    return scoreRaw;
+  }
+  if (element === "cmi.core.score.max" || element === "cmi.score.max") {
+    return scoreMax;
+  }
+  if (element === "cmi.core.score.min" || element === "cmi.score.min") {
+    return scoreMin;
+  }
+  // En cualquier otro caso, devolver vacío
+  return "";
+}
+
+function LMSSetValue(element, value) {
+  // Guardar score en variables locales
+  if (element === "cmi.core.score.raw" || element === "cmi.score.raw") {
+    scoreRaw = value;
+    return "true";
+  }
+  if (element === "cmi.core.score.max" || element === "cmi.score.max") {
+    scoreMax = value;
+    return "true";
+  }
+  if (element === "cmi.core.score.min" || element === "cmi.score.min") {
+    scoreMin = value;
+    return "true";
+  }
+  // Ignorar cualquier otro valor
+  return "true";
+}
+
 function LMSCommit(param) { return "true"; }
 function LMSGetLastError() { return "0"; }
 function LMSGetErrorString(errorCode) { return "No error"; }
@@ -27,24 +61,20 @@ var finishCalled = false;
 var autoCommit = false;
 
 // -----------------------------------------------------------------------------
-// Funciones parcheadas (ya no dependen de un LMS real)
+// Funciones parcheadas (sin conexión LMS)
 // -----------------------------------------------------------------------------
 
 function MySetValue(lmsVar, lmsVal) {
-  // Antes: intentaba enviar a un TitleMgr y al LMS.
-  // Ahora solo ignora la llamada y evita error.
   return LMSSetValue(lmsVar, lmsVal);
 }
 
 function loadPage() {
-  // Inicia un "estado ficticio" sin LMS
   startTimer();
   return true;
 }
 
 function startTimer() {
   var startDate = new Date().getTime();
-  // Se guarda en memoria global simple (sin LMS)
   window.TrivantisSCORMTimer = startDate;
 }
 
@@ -102,6 +132,6 @@ function convertTotalMills(ts) {
 }
 
 function putSCORMInteractions(id,obj,tim,typ,crsp,wgt,srsp,res,lat,txt) {
-  // En SCORM real, esto registraría interacciones. Aquí lo ignoramos.
+  // Aquí no guardamos nada, solo ignoramos silenciosamente
   return true;
 }
