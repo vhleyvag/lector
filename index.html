@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--GENERADO POR:  Lectora v.22.0.1(12617) (https://www.elblearning.com) -->
+<!--PROYECTO: Título 4 -->
+
+
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta charset="utf-8" />
+<meta name="viewport" content=" minimum-scale = 1.0 , initial-scale= 1" />
+<title></title>
+
+<link rel="stylesheet" href="trivantis.css" type="text/css" />
+
+<link rel="stylesheet" href="trivantis-focus.css" type="text/css" />
+
+<link rel="stylesheet" href="trivantis-player.css" type="text/css" />
+
+<link rel="stylesheet" href="speed.css" type="text/css" />
+
+<script type='text/javascript' src='trivantis-pageplayer.js'></script>
+
+<script type='text/javascript' src='trivantis-opautils.js'></script>
+
+<script type='text/javascript' src='trivantis.js'></script>
+
+<script type='text/javascript' src='es6-promise-2.0.0.min.js'></script>
+
+<script type='text/javascript' src='trivantis-cookie.js'></script>
+<script type='text/javascript' src="jquery-3.6.0.min.js"></script>
+<script type='text/javascript' src="mediaelement-and-player.js"></script>
+<script type='text/javascript' src="speed.js"></script>
+<script type='text/javascript' src='trivantis-media.js'></script>
+<script type='text/javascript' src='trivantis-strings.js' charset='UTF-8'></script>
+<link rel="stylesheet" href="dialog.css" type="text/css" />
+<style type='text/css'>
+body { background-color:#efefef; }
+</style>
+<script src="trivantis-strings.js" charset="UTF-8"></script>
+<script src="enc.js"></script>
+<script src="trivantis-titlemgr.js"></script>
+<script src="trivantis-titlemgr-interact.js"></script>
+<script src="trivantis-dialog.js"></script>
+<script src="aria-utils.js"></script>
+<script src="apiwrapper11.js"></script>
+<script src="scofunctions.js"></script>
+<script>
+
+<!-- 
+
+VarTrivSelCap = new Variable( 'VarTrivSelCap', 'none', 0, 0, null, null, 'título_4', true )
+var pagePlayer = null;
+var bHasAutoStart = false;
+var audioPoolCount = 0;
+var videoPoolCount = 0;
+var bAutoStartOnFirstPage = false;
+if( is.ieMac )
+  document.write( '<font size=4>(Nota: Internet Explorer para Macintosh no es compatible con el acceso a JavaScript para applets/AJAX. Esta es una limitación del explorador, no un defecto del material del curso. Por esta razón, los usuarios de Macintosh IE 5 no pueden acceder a materiales del curso que incorporan funciones de JavaScript/AJAX. Intente acceder al material de este curso desde una máquina que no sea Macintosh o un explorador que no sea IE en Macintosh.</font><br /><br />' )
+else if( !is.min )
+  document.write( '<div class="noti" style="margin: 15px 0; box-shadow: 0 0 8px #888; background: #FFF4F4; text-align: center; padding: 2px;width: 750px;margin: auto;text-align: left;position: relative;clear: both;margin-bottom: 25px; font-family: &apos;Open Sans&apos;, sans-serif"><div class="whatnow" style="text-align: center; margin: 13px 25px; font-size: 20px; font-weight: 400;"><p style="margin: 13px 10px;">Su navegador está desactualizado.<p><p style="margin: 13px 10px;">Descargue uno de estos navegadores actualizados, gratuitos y excelentes para ver este objeto de aprendizaje:</p></div><table class="logos" id="browserlist" style="width: 100%; border: none;"><tbody><tr><td class="b" style="vertical-align: top;padding: 10px;border: none;background: none;width: 25%;"><a class="l" style="display: block;padding: 4px;background-repeat: no-repeat;background-size: 110px auto;background-position: center 4px;text-decoration: underline;text-align: center;border: 2px solid transparent;position: relative;font-size: 1.8em" href="https://www.microsoft.com/en-us/windows/microsoft-edge" target="_blank" rel="noopener" title="¡Descargue el navegador web Edge actualizado del sitio web oficial de Microsoft!">Edge</a></td><td class="b" style="vertical-align: top;padding: 10px;border: none;background: none;width: 25%;"><a class="l" style="display: block;padding: 4px;background-repeat: no-repeat;background-size: 110px auto;background-position: center 4px;text-decoration: underline;text-align: center;border: 2px solid transparent;position: relative;font-size: 1.8em" href="https://www.mozilla.org/firefox/" target="_blank" rel="noopener" title="¡Descargue el navegador web Firefox actualizado del sitio web oficial de la Fundación Mozilla!">Firefox</a></td><td class="b" style="vertical-align: top;padding: 10px;border: none;background: none;width: 25%;"><a class="l" style="display: block;padding: 4px;background-repeat: no-repeat;background-size: 110px auto;background-position: center 4px;text-decoration: underline;text-align: center;border: 2px solid transparent;position: relative;font-size: 1.8em" href="https://www.google.com/chrome/browser/desktop/" target="_blank" rel="noopener" title="¡Descargue el navegador web Chrome actualizado del sitio web oficial de Google!">Chrome</a></td><td class="b" style="vertical-align: top;padding: 10px;border: none;background: none;width: 25%;"><a class="l" style="display: block;padding: 4px;background-repeat: no-repeat;background-size: 110px auto;background-position: center 4px;text-decoration: underline;text-align: center;border: 2px solid transparent;position: relative;font-size: 1.8em" href="https://support.apple.com/downloads/safari" target="_blank" rel="noopener" title="Descargue el navegador web Safari actualizado del sitio web oficial de Apple">Safari</a></td></tr></tbody></table><div class="whatnow" style="text-align: center;margin: 13px 25px;font-size: 20px;font-weight: 400;"><p>Para mayor seguridad, velocidad y comodidad.</p></div><div class="whatnow-small" style="font-size: 15px;margin: 13px;text-align: center;font-weight: 300;"><p>La descarga es segura desde el sitio web oficial del proveedor.</p></div></div><br /><br />' )
+
+trivWeb20Popups = true;
+trivSetupPage();
+
+onload = init
+
+
+function init() {
+	 pagePlayer = new jsPagePlayer();
+  var titleMgr = getTitleMgrHandle()
+  if( titleMgr ) {
+    var redirPage = null
+    titleMgr.bIntActs = true
+    titleMgr.bSCORM = true
+    titleMgr.bAddTimeStamp = false
+    titleMgr.scVers = 1
+    titleMgr.loadTest( '_tobj137934', 'test137934', null )
+    redirPage = 'page43.html';
+var jumpToPage = getQueryParams().jmptopg;
+    redirPage = jumpToPage ? jumpToPage : redirPage;
+    function cont() { pagePlayer.gotoPage(' ' + redirPage + ' '); }
+	 window.bAutoStartOnPage = bAutoStartOnFirstPage;
+	 enableAutoStart ( cont , t); 
+  }
+}
+// -->
+
+</script>
+</head>
+
+<body>
+<div id='mediaPool' style='z-index: 0; visibility: hidden;'></div>
+</body>
+</html>
