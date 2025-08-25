@@ -42,88 +42,204 @@
 **
 *******************************************************************************/
 
-/* ======= SCORM PATCH: lightweight in-memory stub (no tracking) =======
-   Objetivo: ejecutar como HTML normal y permitir lectura/escritura de score.
-   - Sólo se define si NO existen funciones LMS* reales.
-   - No persiste datos (sin localStorage/cookies).
-======================================================================= */
+/* ======= SCORM PATCH v2: stub en memoria (sin tracking) =======
+   - Reemplaza SIEMPRE las funciones LMS* para uso fuera de LMS.
+   - Mantiene calificación y estado consultables por el curso.
+================================================================ */
 (function(){
-  if (typeof window.LMSInitialize !== "function") {
-    var __scormInitialized = false;
-    var __scorm = {
-      // Valores por defecto útiles para muchos cursos
-      "cmi.core.lesson_status": "not attempted",
-      "cmi.core.lesson_mode": "normal",
-      "cmi.core.credit": "credit",
-      "cmi.core.score.raw": "",
-      "cmi.core.score.max": "",
-      "cmi.core.score.min": "",
-      "cmi.interactions._count": "0",
-      // SCORM 2004 mirrors (por si el contenido los usa)
-      "cmi.completion_status": "unknown",
-      "cmi.mode": "normal",
-      "cmi.credit": "credit",
-      "cmi.score.raw": "",
-      "cmi.score.max": "",
-      "cmi.score.min": ""
-    };
+  var __initialized = false;
+  var __scorm = {
+    // SCORM 1.2
+    "cmi.core.lesson_status": "incomplete",
+    "cmi.core.lesson_mode": "normal",
+    "cmi.core.credit": "credit",
+    "cmi.core.score.raw": "0",
+    "cmi.core.score.max": "100",
+    "cmi.core.score.min": "0",
+    "cmi.core.session_time": "00:00:00",
+    // SCORM 2004
+    "cmi.completion_status": "incomplete",
+    "cmi.success_status": "unknown",
+    "cmi.mode": "normal",
+    "cmi.credit": "credit",
+    "cmi.score.raw": "0",
+    "cmi.score.max": "100",
+    "cmi.score.min": "0",
+    "cmi.score.scaled": "",
+    // Interactions
+    "cmi.interactions._count": "0"
+  };
 
-    function updateInteractionsCount(key){
-      var m = key && key.match(/^cmi\.interactions\.(\d+)\./);
+  function _toNumber(v, fallback){
+    var n = parseFloat(v);
+    return isNaN(n) ? (fallback if fallback is not None else 0) : n;
+  }
+
+  function _pad(n){ n = parseInt(n,10); return (n<10?'0':'') + n; }
+
+  function _mirrorStatus12to2004(val){
+    var s = (val||"").toLowerCase();
+    __scorm["cmi.core.lesson_status"] = val;
+    if (s === "completed") __scorm["cmi.completion_status"] = "completed";
+    else if (s === "incomplete") __scorm["cmi.completion_status"] = "incomplete";
+    else if (s === "passed") { __scorm["cmi.completion_status"] = "completed"; __scorm["cmi.success_status"] = "passed"; }
+    else if (s === "failed") { __scorm["cmi.completion_status"] = "completed"; __scorm["cmi.success_status"] = "failed"; }
+    else if (s === "not attempted") __scorm["cmi.completion_status"] = "not attempted";
+    else if (s === "browsed") __scorm["cmi.completion_status"] = "completed";
+  }
+
+  function _mirrorStatus2004to12(val){
+    var s = (val||"").toLowerCase();
+    __scorm["cmi.completion_status"] = val;
+    if (s === "completed") __scorm["cmi.core.lesson_status"] = "completed";
+    else if (s === "incomplete") __scorm["cmi.core.lesson_status"] = "incomplete";
+    else if (s === "not attempted") __scorm["cmi.core.lesson_status"] = "not attempted";
+  }
+
+  function _updateScaled(){
+    var raw = parseFloat(__scorm["cmi.core.score.raw"] || __scorm["cmi.score.raw"] || "0");
+    var max = parseFloat(__scorm["cmi.core.score.max"] || __scorm["cmi.score.max"] || "100");
+    if (max && !isNaN(raw) && !isNaN(max)) {
+      __scorm["cmi.score.scaled"] = String(raw / max);
+    }
+  }
+
+  function _updateCoreFromObjectives(key, value){
+    // Si viene como cmi.objectives.n.score.raw -> reflejar en core
+    var m = key.match(/^cmi\.objectives\.(\d+)\.score\.(raw|max|min)$/);
+    if (m) {
+      var which = m[1];
+      var kind = m[2];
+      var v = String(value);
+      __scorm["cmi.core.score."+kind] = v;
+      __scorm["cmi.score."+kind] = v;
+      _updateScaled();
+    }
+  }
+
+  // -------- Implementación de API SCORM 1.2 (funciones sueltas) --------
+  window.LMSInitialize = function(){ __initialized = true; return "true"; };
+  window.LMSIsInitialized = function(){ return __initialized; };
+  window.LMSFinish = function(){ 
+    // Si nunca se cambió, marcamos como completed al salir
+    var st = (__scorm["cmi.core.lesson_status"]||"").toLowerCase();
+    if (st === "not attempted" || st === "incomplete" || st === "") {
+      _mirrorStatus12to2004("completed");
+    }
+    return "true"; 
+  };
+  window.LMSCommit = function(){ return "true"; };
+  window.LMSGetLastError = function(){ return "0"; };
+  window.LMSGetErrorString = function(){ return "No error"; };
+  window.LMSGetDiagnostic = function(){ return "SCORM patched stub"; };
+
+  window.LMSGetValue = function(element){
+    if (element === "cmi.score.raw") return __scorm["cmi.score.raw"];
+    if (element === "cmi.score.max") return __scorm["cmi.score.max"];
+    if (element === "cmi.score.min") return __scorm["cmi.score.min"];
+    // fallback general
+    return (__scorm.hasOwnProperty(element)) ? __scorm[element] : "";
+  };
+
+  window.LMSSetValue = function(element, value){
+    var key = String(element);
+    var val = String(value);
+
+    // Espejo para score (1.2 <-> 2004)
+    if (key === "cmi.core.score.raw" || key === "cmi.score.raw") {
+      __scorm["cmi.core.score.raw"] = val; __scorm["cmi.score.raw"] = val; _updateScaled(); return "true";
+    }
+    if (key === "cmi.core.score.max" || key === "cmi.score.max") {
+      __scorm["cmi.core.score.max"] = val; __scorm["cmi.score.max"] = val; _updateScaled(); return "true";
+    }
+    if (key === "cmi.core.score.min" || key === "cmi.score.min") {
+      __scorm["cmi.core.score.min"] = val; __scorm["cmi.score.min"] = val; return "true";
+    }
+    if (key === "cmi.score.scaled") {
+      // Si nos mandan scaled, derivamos raw con max
+      var max = parseFloat(__scorm["cmi.core.score.max"] || __scorm["cmi.score.max"] || "100");
+      var scaled = parseFloat(val);
+      if (!isNaN(scaled) && !isNaN(max)) {
+        var raw = String(Math.round(scaled * max));
+        __scorm["cmi.core.score.raw"] = raw;
+        __scorm["cmi.score.raw"] = raw;
+        __scorm["cmi.score.scaled"] = val;
+      } else {
+        __scorm["cmi.score.scaled"] = val;
+      }
+      return "true";
+    }
+
+    // Estado (1.2) y su espejo 2004
+    if (key === "cmi.core.lesson_status") { _mirrorStatus12to2004(val); return "true"; }
+    if (key === "cmi.completion_status") { _mirrorStatus2004to12(val); return "true"; }
+    if (key === "cmi.success_status") { __scorm["cmi.success_status"] = val; return "true"; }
+
+    // Interactions: mantener el count mínimo si escriben índices
+    if (/^cmi\.interactions\.\d+\./.test(key)) {
+      var m = key.match(/^cmi\.interactions\.(\d+)\./);
       if (m) {
         var idx = parseInt(m[1], 10);
         var cnt = parseInt(__scorm["cmi.interactions._count"] || "0", 10);
         if (idx + 1 > cnt) __scorm["cmi.interactions._count"] = String(idx + 1);
       }
+      __scorm[key] = val;
+      _updateCoreFromObjectives(key, val);
+      return "true";
     }
 
-    window.LMSInitialize = function(){ __scormInitialized = true; return "true"; };
-    window.LMSIsInitialized = function(){ return __scormInitialized; };
-    window.LMSFinish = function(){ __scormInitialized = false; return "true"; };
-    window.LMSCommit = function(){ return "true"; };
-    window.LMSGetLastError = function(){ return "0"; };
-    window.LMSGetErrorString = function(){ return "No error"; };
-    window.LMSGetDiagnostic = function(){ return "SCORM patched: in-memory stub"; };
+    // Guardar cualquier otra clave
+    __scorm[key] = val;
+    return "true";
+  };
 
-    window.LMSGetValue = function(element){
-      // Soporta tanto 1.2 como 2004 para score
-      if (element === "cmi.score.raw") return __scorm["cmi.score.raw"];
-      if (element === "cmi.score.max") return __scorm["cmi.score.max"];
-      if (element === "cmi.score.min") return __scorm["cmi.score.min"];
-      return (element in __scorm) ? __scorm[element] : "";
-    };
+  // -------- Exponer objetos API comunes para buscadores de API --------
+  window.API = {
+    LMSInitialize: window.LMSInitialize,
+    LMSFinish: window.LMSFinish,
+    LMSGetValue: window.LMSGetValue,
+    LMSSetValue: window.LMSSetValue,
+    LMSCommit: window.LMSCommit,
+    LMSGetLastError: window.LMSGetLastError,
+    LMSGetErrorString: window.LMSGetErrorString,
+    LMSGetDiagnostic: window.LMSGetDiagnostic
+  };
 
-    window.LMSSetValue = function(element, value){
-      // Espejo de score 1.2 <-> 2004
-      if (element === "cmi.score.raw") { __scorm["cmi.score.raw"] = String(value); __scorm["cmi.core.score.raw"] = String(value); return "true"; }
-      if (element === "cmi.score.max") { __scorm["cmi.score.max"] = String(value); __scorm["cmi.core.score.max"] = String(value); return "true"; }
-      if (element === "cmi.score.min") { __scorm["cmi.score.min"] = String(value); __scorm["cmi.core.score.min"] = String(value); return "true"; }
-      __scorm[element] = String(value);
-      updateInteractionsCount(element);
-      return "true";
-    };
-  }
+  window.API_1484_11 = {
+    Initialize: function(){ __initialized = true; return "true"; },
+    Terminate: function(){ 
+      var st = (__scorm["cmi.completion_status"]||"").toLowerCase();
+      if (st === "not attempted" || st === "incomplete" || st === "") {
+        _mirrorStatus12to2004("completed");
+      }
+      return "true"; 
+    },
+    GetValue: function(e){ 
+      if (e === "cmi.score.raw") return __scorm["cmi.score.raw"];
+      if (e === "cmi.score.max") return __scorm["cmi.score.max"];
+      if (e === "cmi.score.min") return __scorm["cmi.score.min"];
+      return (__scorm.hasOwnProperty(e)) ? __scorm[e] : ""; 
+    },
+    SetValue: function(e,v){ return window.LMSSetValue(e,v); },
+    Commit: function(){ return "true"; },
+    GetLastError: function(){ return "0"; },
+    GetErrorString: function(){ return "No error"; },
+    GetDiagnostic: function(){ return "SCORM patched stub"; }
+  };
 
-  // Stubs seguros por si faltan utilidades del runtime Trivantis
-  if (typeof window.readVariable !== "function") {
-    window.readVariable = function(name, defaultVal){ return defaultVal; };
-  }
-  if (typeof window.saveVariable !== "function") {
-    window.saveVariable = function(name, value){};
-  }
-  if (typeof window.getTitleMgrHandle !== "function") {
-    window.getTitleMgrHandle = function(){ return null; };
-  }
-})();
-/* ======= FIN SCORM PATCH ======= */
+  // Utilidades del runtime que a veces se esperan
+  if (typeof window.readVariable !== "function") window.readVariable = function(n, d){ return d; };
+  if (typeof window.saveVariable !== "function") window.saveVariable = function(n, v){};
+  if (typeof window.getTitleMgrHandle !== "function") window.getTitleMgrHandle = function(){ return null; };
+})(); 
+/* ======= FIN SCORM PATCH v2 ======= */
 
 
 var finishCalled = false;
 var autoCommit = false;
 
 function MySetValue( lmsVar, lmsVal ) {
-  // Patched: no TitleMgr writes; sólo se enruta a LMSSetValue (stub)
-  try { return LMSSetValue( lmsVar, lmsVal ); } catch(e) { return "true"; }
+  try { return LMSSetValue(lmsVar, lmsVal); } catch(e) { return "true"; }
 }
 
 function loadPage() {
